@@ -1,5 +1,8 @@
 package fr.oz;
 
+import static fr.oz.ui.DialogBoxDisplay.askUserInput;
+import static fr.oz.ui.DialogBoxDisplay.showContinueQuestion;
+
 import java.awt.HeadlessException;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -8,93 +11,96 @@ import java.io.LineNumberReader;
 
 import javax.swing.JOptionPane;
 
+import fr.oz.exception.CustomException;
+
 public class App {
-    public static void main(String[] args) throws IOException {
-        boolean again = true;
-        do {
-            String input = "";
+	public static void main(String[] args) {
 
-            try {
-                input = JOptionPane.showInputDialog(null, "Quel fichier souhaitez-vous lire ?");
-            } catch (NullPointerException npe) {
-                JOptionPane.showMessageDialog(null, "nom de fichier incorrecte");
-                int reply = JOptionPane.showConfirmDialog(null, "Voulez-vous lire un autre fichier", "Poursuite ?",
-                        JOptionPane.YES_NO_OPTION);
-                if (reply == JOptionPane.NO_OPTION) {
-                    again = false;
-                }
+		String input = "";
+		String fichier;
+		String totale;
+		boolean again = true;
 
-            }
+		do {
 
-            if ((input == null || "".equals(input.trim()))) {
-                JOptionPane.showMessageDialog(null, "nom de fichier incorrecte");
-                int reply = JOptionPane.showConfirmDialog(null, "Voulez-vous lire un autre fichier", "Poursuite ?",
-                        JOptionPane.YES_NO_OPTION);
-                if (reply == JOptionPane.NO_OPTION) {
-                    again = false;
-                }
-            } else {
-                String fichier = input.replaceAll(String.valueOf((char) 0160), " ").trim();
-                LineNumberReader lineNumberReader = null;
-                String totale = " ";
-                String ligneParTour;
-                try {
+			input = askUserInput();
 
-                    FileReader fileReader = new FileReader(fichier);
-                    fileReader = new FileReader(fichier);
-                    lineNumberReader = new LineNumberReader(fileReader);
+			if ((input == null || "".equals(input.trim()))) {
 
-                    String ligneLue = null;
-                    while ((ligneLue = lineNumberReader.readLine()) != null) {
+				again = exitOrContinue("nom de fichier incorrecte");
+			}
 
-                        ligneParTour = "Ligne - " + lineNumberReader.getLineNumber() + " - " + ligneLue;
+			else {
 
-                        System.out.println(ligneParTour);
+				fichier = input.replaceAll(String.valueOf((char) 0160), " ").trim();
 
-                        totale += ligneParTour + "\n";
-                    }
+				try {
+					totale = read(input);
+					JOptionPane.showMessageDialog(null, totale, fichier, JOptionPane.INFORMATION_MESSAGE);
 
-                    JOptionPane.showMessageDialog(null, totale, fichier, JOptionPane.INFORMATION_MESSAGE);
-                    int reply = JOptionPane.showConfirmDialog(null, "Voulez-vous lire un autre fichier", "Poursuite ?",
-                            JOptionPane.YES_NO_OPTION);
-                    if (reply == JOptionPane.NO_OPTION) {
-                        break;
-                    }
+					again = (showContinueQuestion() != JOptionPane.NO_OPTION);
 
-                } catch (FileNotFoundException fnfe) {
-                    JOptionPane.showMessageDialog(null,
-                            "Fichier introuvable \n" + fichier + " (Le fichier spécifié est introuvable)");
-                    int reply = JOptionPane.showConfirmDialog(null, "Voulez-vous lire un autre fichier", "Poursuite ?",
-                            JOptionPane.YES_NO_OPTION);
-                    if (reply == JOptionPane.NO_OPTION) {
-                        again = false;
-                    }
+				}
 
-                } catch (HeadlessException e) {
-                    JOptionPane.showMessageDialog(null, "Il ne reste plus de ligne à afficher");
+				catch (CustomException e) {
 
-                } catch (IOException e) {
-                    JOptionPane.showMessageDialog(null, "Impossible de lire le conten du fichier");
-                    int reply = JOptionPane.showConfirmDialog(null, "Voulez-vous lire un autre fichier", "Poursuite ?",
-                            JOptionPane.YES_NO_OPTION);
-                    if (reply == JOptionPane.NO_OPTION) {
-                        again = false;
-                    }
+					again = exitOrContinue(e.getMessage());
+				}
 
-                } finally {
-                    try {
-                        lineNumberReader.close();
-                    } catch (IOException ioe) {
-                        System.err.println("Impossible de fermer le fichier  " + fichier.toString());
+			}
 
-                    } catch (NullPointerException npe) {
-                        System.err.println("Impossible d'ouvrir le fichier  " + fichier.toString());
+		} while (again);
 
-                    }
-                }
-            }
+	}
 
-        } while (again);
+	private static String read(String input) throws CustomException {
 
-    }
+		String fichier = input.replaceAll(String.valueOf((char) 0160), " ").trim();
+		String totale = " ";
+		String ligneParTour;
+
+		try (final FileReader fileReader = new FileReader(fichier);
+				final LineNumberReader lineNumberReader = new LineNumberReader(fileReader);) {
+
+			// filereader and lineNumberReader will be closed automatically.
+
+			String ligneLue = null;
+
+			while ((ligneLue = lineNumberReader.readLine()) != null) {
+
+				ligneParTour = "Ligne - " + lineNumberReader.getLineNumber() + " - " + ligneLue;
+
+				System.out.println(ligneParTour);
+
+				totale += ligneParTour + "\n";
+			}
+
+		} catch (FileNotFoundException fnfe) {
+
+			throw new CustomException("Fichier introuvable \n" + fichier + " (Le fichier spécifié est introuvable)");
+
+		} catch (HeadlessException e) {
+
+			throw new CustomException("Il ne reste plus de ligne à afficher");
+
+		} catch (IOException e) {
+
+			throw new CustomException("Impossible de lire le conten du fichier");
+
+		}
+
+		return totale;
+
+	}
+
+	private static boolean exitOrContinue(final String message) {
+
+		JOptionPane.showMessageDialog(null, message);
+
+		// System.exit(0) close the application.
+
+		return (showContinueQuestion() != JOptionPane.NO_OPTION);
+
+	}
+
 }
